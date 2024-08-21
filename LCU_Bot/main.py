@@ -7,14 +7,6 @@ import json
 import importlib
 from cogs.utils import checks
 
-sentry_sdk.init(
-        dsn="https://bdd74ab2b48f403580613b913f2a4bec@o4505332868513792.ingest.sentry.io/4505332869955584",
-
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
-        # We recommend adjusting this value in production.
-        traces_sample_rate=1.0
-)
 class Bot(commands.AutoShardedBot):#autosharded
     async def is_owner(self, user: discord.User):
         with open('cogs/data/stafflogins.json', 'r+') as file:
