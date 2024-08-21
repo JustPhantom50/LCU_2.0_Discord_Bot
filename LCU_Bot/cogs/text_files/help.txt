@@ -1,0 +1,124 @@
+import discord
+from discord.ext import tasks, commands
+import datetime
+from discord.ui import View, Button, Select
+from discord import Interaction, app_commands
+import time
+import asyncio
+from cogs.utils.checks import getInfo, load_env, convertInto, checks, checkBlacklisted, log_command
+import re
+import sys
+import sqlite3
+
+class SettingsPanel(discord.ui.View):
+    def __init__(self, ctx, bot, pages, cur_page, contents):
+        super().__init__(timeout=None)
+        self.ctx = ctx
+        self.bot = bot
+        self.pages = pages
+        self.cur_page = cur_page
+        self.contents = contents
+
+    @discord.ui.button(label="<", style=discord.ButtonStyle.blurple)
+    async def back(self, ctx: Interaction, button: discord.ui.Button):
+      try:
+        con = sqlite3.connect("cogs/data/main_db.db")
+        cur = con.cursor()
+        res = cur.execute(f"SELECT commands_color FROM embeds WHERE guild_id = ?", (ctx.guild.id,))
+        color2 = res.fetchone()
+        color2 = ','.join(color2)
+        color2 = color2.replace("(", "").replace(")", "")
+        color_list = re.split(r',\s?', color2)
+        color = discord.Color.from_rgb(int(color_list[0]), int(color_list[1]), int(color_list[2]))
+      except:
+        color = discord.Color.blue()
+      super().__init__(timeout=None)
+      if self.cur_page == 1:
+        self.cur_page = 5
+        e = discord.Embed(title=f"{list(self.contents.keys())[self.cur_page-1]}", description=f"\n{list(self.contents.values())[self.cur_page-1]}", color=color)
+        e.set_footer(text=f"Page {self.cur_page}/{self.pages}")
+        return await ctx.response.edit_message(embed=e)
+      else:
+        self.cur_page -= 1
+        e = discord.Embed(title=f"{list(self.contents.keys())[self.cur_page-1]}", description=f"\n{list(self.contents.values())[self.cur_page-1]}", color=color)
+        e.set_footer(text=f"Page {self.cur_page}/{self.pages}")
+        return await ctx.response.edit_message(embed=e)
+      
+    @discord.ui.button(label=">", style=discord.ButtonStyle.blurple)
+    async def next(self, ctx: Interaction, button: discord.ui.Button):
+      try:
+        con = sqlite3.connect("cogs/data/main_db.db")
+        cur = con.cursor()
+        res = cur.execute(f"SELECT commands_color FROM embeds WHERE guild_id = ?", (ctx.guild.id,))
+        color2 = res.fetchone()
+        color2 = ','.join(color2)
+        color2 = color2.replace("(", "").replace(")", "")
+        color_list = re.split(r',\s?', color2)
+        color = discord.Color.from_rgb(int(color_list[0]), int(color_list[1]), int(color_list[2]))
+      except:
+        color = discord.Color.blue()
+      if self.cur_page >= self.pages:
+        self.cur_page = 1
+        e = discord.Embed(title=f"{list(self.contents.keys())[self.cur_page-1]}", description=f"\n{list(self.contents.values())[self.cur_page-1]}", color=color)
+        e.set_footer(text=f"Page {self.cur_page}/{self.pages}")
+        return await ctx.response.edit_message(embed=e)
+      else:
+        self.cur_page += 1
+        e = discord.Embed(title=f"{list(self.contents.keys())[self.cur_page-1]}", description=f"\n{list(self.contents.values())[self.cur_page-1]}", color=color)
+        e.set_footer(text=f"Page {self.cur_page}/{self.pages}")
+        return await ctx.response.edit_message(embed=e)
+
+class helpc(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+
+    intent = discord.Intents.default()
+    intent.message_content = True
+    intent.members = True
+    bot = commands.Bot(command_prefix=load_env.prefix(), help_command=None, intents=intent)
+
+    @bot.hybrid_command(description="Need help with commands? Run the help command.", with_app_command = True)
+    async def help(self, ctx: commands.Context):
+      await log_command(ctx, self.bot)
+      if await checkBlacklisted(ctx) == False:
+        return await ctx.send("You are blacklisted from LCU. Join our support server to appeal.")
+      
+      contents = {
+                  "Main Commands": "`-session start` - Sends your SSU message in the SSU channel you provided in the setup.\n\n`-session stop` - Sends your shutdown/SSD message in the channel you provided in the setup.\n\n`-session restart` - Restarts the current session.\n\n`-session full` - Sends a session full embed.\n\n`-svote` - Sends the SSU Vote Embed you provided in setup",
+                  "Infractions": "`-strike` - This is used to punish staff members with major offences\n\n`-warn` - This is used to punish staff members with minor offences\n\n`-demote` - Demote someone to certain rank, removes all ranks above role provided\n\n`-promote` - Promote someone to a new rank\n\n`-delete_strike` - Deletes the strike from a user\n\n`-search_strikes` Searches all the strikes from the user you provided.\n\n`-search_warn` - Searches a users wanrs\n\n`-delete_warn` - Deletes a warn from a user\n\n`-search_promos` - Search promotions for a user\n\n`-search_demos` - Searches demotions for a user.\n\n`-terminate` - This will terminate a user from staff.",
+                  "Tools": "`-mod` - This will ping the moderator roles you provded in the setup.\n\n`-admin` - This will ping the admin roles you provided in the setup.\n\n`-all` - This pings all of the provided staff roles.\n\n`-ad` - This will send your advertisement that you provided in the setup.\n\n`-manage_replies` - This command will management the auto replies.\n\n`-say` - This will send a message a the channel with a given message.\n\n`-embed` - Send an embed with the bot\n\n`-on` - Start your m command reminders\n\n`-off` - End your m command reminder",
+                  "Other": "`-config` - This will allow you to reconfigure specific features within LCU.\n\n`-settings` - This will allow you to change some settings of the bot.\n\n`-info` - Get info about the bot.\n\n`-server_blacklist` - This will send a blacklist message to your current channel",
+                  "LOA": "`-loa request 1y|1m|1w|1d reason` - This will send a request for a LOA.\n\n`-loa manage` - This will send your current LOA which you can end.\n\n`-loa search @user:Optional` - This takes an optional user and will search active LOA's."
+                  }
+      
+      pages = 5
+      cur_page = 1
+      try:
+        con = sqlite3.connect("cogs/data/main_db.db")
+        cur = con.cursor()
+        res = cur.execute(f"SELECT commands_color FROM embeds WHERE guild_id = ?", (ctx.guild.id,))
+        color2 = res.fetchone()
+        color2 = ','.join(color2)
+        color2 = color2.replace("(", "").replace(")", "")
+        color_list = re.split(r',\s?', color2)
+        color = discord.Color.from_rgb(int(color_list[0]), int(color_list[1]), int(color_list[2]))
+      except:
+        color = discord.Color.blue()
+      e = discord.Embed(title=f"{list(contents.keys())[0]}", description=f"\n{list(contents.values())[0]}", color=color)
+      e.set_footer(text=f"Page {cur_page}/{pages} You are able to edit all embeds in the settings command")#its right here
+      msg = await ctx.send(embed=e, view = SettingsPanel(ctx, self.bot, pages, cur_page, contents))
+      try:
+        await self.bot.wait_for('interaction', timeout=800, check=lambda message: message.user == ctx.author and message.channel == ctx.channel)
+      except asyncio.TimeoutError:
+        last = discord.ui.Button(label="<", style=discord.ButtonStyle.primary, disabled=True)
+        next = discord.ui.Button(label=">", style=discord.ButtonStyle.primary, disabled=True)
+        view=View()
+        view.add_item(last)
+        view.add_item(next)
+        await msg.edit(view=view)
+        return
+
+
+async def setup(bot):
+  await bot.add_cog(helpc(bot))
