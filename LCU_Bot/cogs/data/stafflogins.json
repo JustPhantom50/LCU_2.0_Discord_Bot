@@ -1,16 +1,3 @@
 {
-    "676895030094331915": {
-        "user_id": 676895030094331915,
-        "password": "password",
-        "type": "ownership",
-        "logged-in": true,
-        "logged-in-at": 1693444837
-    },
-    "688919016722661452": {
-        "user_id": 688919016722661452,
-        "password": "password",
-        "type": "ownership",
-        "logged-in": true,
-        "logged-in-at": 1693444837
-    }
+
 }
